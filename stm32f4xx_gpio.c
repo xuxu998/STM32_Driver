@@ -29,7 +29,6 @@ void GPIO_Init(GPIO_Handle_t *pGPIO)
     {
     	/*Init clock for EXTI and SYSCFG peripherals*/
     	//EXTI_CLK_ENB();
-    	SYSCFG_CLK_ENB();
         /* Configuration of EXTI peripheral */
         if(pGPIO->GPIO_PinConfig.GPIO_PinMode == GPIO_MODE_IT_FT)
         {
@@ -61,11 +60,11 @@ void GPIO_Init(GPIO_Handle_t *pGPIO)
         /* Configuration of SYSFG peripherals */
 
         /* config GPIO port selection in SYSCFG_EXTICR */
-        uint8_t RefLocation = pGPIO->GPIO_PinConfig.GPIO_PinNumber / 4;
-        uint8_t FieldLocation = pGPIO->GPIO_PinConfig.GPIO_PinNumber % 4;
-        tempReg = SYSCFG->EXTICR[RefLocation] & ~((0xF) << (FieldLocation * 4));
-        uint8_t Code = RETURN_GPIO_CODE(pGPIO->pGPIOx);
-        SYSCFG->EXTICR[RefLocation] = tempReg | Code <<(FieldLocation * 4);
+        uint8_t temp1 = pGPIO->GPIO_PinConfig.GPIO_PinNumber / 4 ;
+        		uint8_t temp2 = pGPIO->GPIO_PinConfig.GPIO_PinNumber % 4;
+        		uint8_t portcode = GPIO_BASEADDR_TO_CODE(pGPIO->pGPIOx);
+        		SYSCFG_PCLK_EN();
+        		SYSCFG->EXTICR[temp1] = portcode << ( temp2 * 4);
 
         /* End of configuration of SYSFG peripherals */
     }
@@ -386,11 +385,24 @@ void GPIO_TogglePin(GPIO_RegDef_t *pGPIOx, uint8_t PinNum)
 }
 void GPIO_PriorityConfig(uint8_t IRQNumber, uint8_t Priority)
 {
+#if 1
     uint8_t RegLocation = IRQNumber / 4;
     uint8_t FieldLocation = IRQNumber % 4 ;
-    uint32_t tempReg = NVIC->IPR[RegLocation] & ~(0xF << (FieldLocation * 8 +(8 - IMPLEMENTED_BITS)));
-    NVIC->IPR[RegLocation] = tempReg | (Priority << (FieldLocation * 8 +(8 - IMPLEMENTED_BITS)));
+    uint8_t shift_amount = FieldLocation * 8 + 8 - IMPLEMENTED_BITS;
+    uint32_t tempReg = NVIC->IPR[RegLocation] & ~(0xF << shift_amount);
+    NVIC->IPR[RegLocation] = tempReg | (Priority << shift_amount);
     return;
+#endif
+#if 0
+	uint8_t iprx = IRQNumber / 4;
+	uint8_t iprx_section  = IRQNumber %4 ;
+
+	uint8_t shift_amount = ( 8 * iprx_section) + ( 8 - NO_PR_BITS_IMPLEMENTED) ;
+
+	*(  NVIC_PR_BASE_ADDR + iprx  ) |=  ( Priority << shift_amount );
+#endif
+
+
 }
 /******************************************************************
  * @fn              -
@@ -408,6 +420,7 @@ void GPIO_PriorityConfig(uint8_t IRQNumber, uint8_t Priority)
  */
 void GPIO_InteruptConfig(uint8_t IRQNumber, uint8_t EnorDi)
 {
+#if 1
     /* @NVIC_CONFIGURATION relation */
     uint8_t RegLocation = IRQNumber / 32;
     uint8_t FieldLocation = IRQNumber % 32;
@@ -423,6 +436,44 @@ void GPIO_InteruptConfig(uint8_t IRQNumber, uint8_t EnorDi)
         NVIC->ICER[RegLocation] = tempReg | (DISABLE << FieldLocation);
     }
     return;
+#endif
+#if 0
+    if(EnorDi == ENABLE)
+    	{
+    		if(IRQNumber <= 31)
+    		{
+    			//program ISER0 register
+    			*NVIC_ISER0 |= ( 1 << IRQNumber );
+
+    		}else if(IRQNumber > 31 && IRQNumber < 64 ) //32 to 63
+    		{
+    			//program ISER1 register
+    			*NVIC_ISER1 |= ( 1 << (IRQNumber % 32) );
+    		}
+    		else if(IRQNumber >= 64 && IRQNumber < 96 )
+    		{
+    			//program ISER2 register //64 to 95
+    			*NVIC_ISER2 |= ( 1 << (IRQNumber % 64) );
+    		}
+    	}
+    else
+    	{
+    		if(IRQNumber <= 31)
+    		{
+    			//program ICER0 register
+    			*NVIC_ICER0 |= ( 1 << IRQNumber );
+    		}else if(IRQNumber > 31 && IRQNumber < 64 )
+    		{
+    			//program ICER1 register
+    			*NVIC_ICER1 |= ( 1 << (IRQNumber % 32) );
+    		}
+    		else if(IRQNumber >= 64 && IRQNumber < 96 )
+    		{
+    			//program ICER2 register
+    			*NVIC_ICER2 |= ( 1 << (IRQNumber % 64) );
+    		}
+        }
+#endif
 }
 
 /******************************************************************

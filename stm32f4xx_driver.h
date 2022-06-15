@@ -6,7 +6,7 @@
 
 /* other implementation macros */
 
-#define RETURN_GPIO_CODE(x)                       (x == GPIOA) ? 0 : \
+#define GPIO_BASEADDR_TO_CODE(x)                       (x == GPIOA) ? 0 : \
                                                   (x == GPIOB) ? 1 : \
                                                   (x == GPIOC) ? 2 : \
                                                   (x == GPIOD) ? 3 : \
@@ -16,11 +16,19 @@
                                                   (x == GPIOH) ? 7 : \
                                                   (x == GPIOI) ? 8 : 0
 
-#define EXTI_CLK_ENB() 								RCC->APB2EN
-#define SYSCFG_CLK_ENB()							RCC->APB2ENR |= 1 << 14
 /****************************************************** PROCESSOR SPECIFIC DETAIL ******************************************************/
 
 #define NVIC_BASEADDR                             0xE000E100               /* nested vector interupt controller base address */
+
+/*
+ * ARM Cortex Mx Processor Priority Register Address Calculation
+ */
+#define NVIC_PR_BASE_ADDR 	((__vo uint32_t*)0xE000E400)
+
+/*
+ * ARM Cortex Mx Processor number of priority bits implemented in Priority Register
+ */
+#define NO_PR_BITS_IMPLEMENTED  4
 
 
 
@@ -107,6 +115,7 @@
 #define UART4_BASEADDR                          (APB1PERIPH_BASE + 0x4C00)                      /* base address of UART4                            */
 #define UART5_BASEADDR                          (APB1PERIPH_BASE + 0x5000)                      /* base address of UART5                            */
 #define SPI2_BASEADDR                           (APB1PERIPH_BASE + 0x3800)                      /* base address of SPI2                             */
+#define SPI3_BASEADDR                           (APB1PERIPH_BASE + 0x3C00)                      /* base address of SPI2                             */
 /*
  * End of define base address which are hanging on APB1 bus
  */
@@ -117,6 +126,9 @@
 
 #define EXTI_BASEADDR                           (APB2PERIPH_BASE+0x3C00)
 #define SPI1_BASEADDR                           (APB2PERIPH_BASE+0x3000)
+#define SPI6_BASEADDR                           (APB2PERIPH_BASE+0x5400)
+#define SPI5_BASEADDR                           (APB2PERIPH_BASE+0x5000)
+#define SPI4_BASEADDR                           (APB2PERIPH_BASE+0x3400)
 #define USART6_BASEADDR                         (APB2PERIPH_BASE+0x1400)
 #define USART1_BASEADDR                         (APB2PERIPH_BASE+0x1000)
 #define SYSCFG_BASEADDR                         (APB2PERIPH_BASE+0x3800)
@@ -131,16 +143,61 @@ typedef struct
 {
      /* data */
      __vo uint32_t ISER[8];
+     	  uint8_t Reserved1[96];
      __vo uint32_t ICER[8];
+     uint8_t Reserved2[96];
      __vo uint32_t ISPR[8];
+     uint8_t Reserved3[96];
      __vo uint32_t ICPR[8];
+     uint8_t Reserved4[96];
      __vo uint32_t IABR[8];
+     uint8_t Reserved5[224];
      __vo uint32_t IPR[60];
+     uint8_t Reserved6[96];
      __vo uint32_t STIR;
-}NVIC_RegDef_t;
+}__attribute__((packed)) NVIC_RegDef_t;
 
 
 /******************************************************  peripheral register definition structures  ******************************************************/
+
+
+typedef struct 
+{
+     /* data */
+     __vo uint32_t CR1;                                     /*  */
+     __vo uint32_t CR2;                                     /*  */
+     __vo uint32_t SR;                                      /*  */
+     __vo uint32_t DR;                                      /*  */
+     __vo uint32_t CRCPR;
+     __vo uint32_t RXCRCR;
+     __vo uint32_t TXCRCR;
+     __vo uint32_t I2SCFGR;
+     __vo uint32_t I2SPR;
+
+}SPI_RegDef_t;
+
+typedef struct 
+{
+     /* data */
+     uint8_t SPI_DeviceMode;
+     uint8_t SPI_BusConfig;
+     uint8_t SPI_ClkSpeed;
+     uint8_t SPI_DFF;
+     uint8_t SPI_CPOL;
+     uint8_t SPI_CPHA;
+     uint8_t SPI_SSM;
+}SPI_Config_t;
+
+typedef struct 
+{
+     /* data */
+     SPI_RegDef_t *SPIx;
+     SPI_Config_t SPIConfig;
+
+}SPI_Handle_t;
+
+
+
 
 typedef struct
 {
@@ -222,7 +279,7 @@ typedef struct
 
 /* processor peripherals */
 
-#define NVIC                        ((NVIC_RegDef_t*)NVIC_BASEADDR)
+#define NVIC                        ((__vo NVIC_RegDef_t*)NVIC_BASEADDR)
 
 /* peripherals definition */
 
